@@ -2,6 +2,8 @@ import sys
 import socket
 from SessionInfo import *
 from HAPI_DLL import *
+import time
+import datetime
 
 quit_program = False
 es_msg_count = 0
@@ -48,6 +50,7 @@ def interactive_loop():
         if command == 'es_status' or command == 'es':
 
             if ES.IsConnected():
+
                 print("ES is connected.")
             else:
                 print("ES is not connected.")
@@ -97,7 +100,10 @@ def heartbeat_loop():
         if ES.IsConnected():
             ES.SendHeartBeatMessage()
         else:
-            print 'ES NOT CONNECTED!!!'
+            ts = time.time()
+            st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+            global es_msg_count
+            print st + ' ES NOT CONNECTED!!! count = ' + str(es_msg_count)
         if quit_program:
             break
         sleep(5)
@@ -220,6 +226,11 @@ def listen_for_es_messages():
             except socket.error as err:
                 print 'es: ', err
                 break
+            except:
+                print 'error in processing es message'
+
+    es_connection.close()
+    es_connection = 0
 
 
 def listen_for_is_messages():
@@ -249,6 +260,11 @@ def listen_for_is_messages():
             except socket.error as err:
                 print 'is: ', err
                 break
+            except:
+                print 'error in processing is message'
+
+    is_connection.close()
+    is_connection = 0
 
 
 def create_server_socket(address):
