@@ -4,6 +4,8 @@ from SessionInfo import *
 from HAPI_DLL import *
 import time
 import datetime
+import Queue
+from store import *
 
 quit_program = False
 es_msg_count = 0
@@ -16,13 +18,16 @@ es_sock = 0
 is_sock = 0
 es_connection = 0
 is_connection = 0
+es_queue = 0
+is_queue = 0
+
 
 def es_message_handler(message):
-    write_response(es_connection, message)
+    es_queue.put(message)
 
 
 def is_message_handler(message):
-    write_response(is_connection, message)
+    is_queue.put(message)
 
 
 def es_cleanup_callback():
@@ -306,7 +311,37 @@ def create_is_server_sock():
             es_connection.close()
 
 
+def process_es_queue():
+    while True:
+        try:
+            message = es_queue.get(block=True, timeout=1)
+            write_response(es_connection, message)
+            insert_message_into_es(message)
+            es_queue.task_done()
+            if quit_program:
+                break
+        except Queue.Empty:
+            if quit_program:
+                break
+
+
+def process_is_queue():
+    while True:
+        try:
+            message = is_queue.get(block=True, timeout=1)
+            write_response(is_connection, message)
+            insert_message_into_is(message)
+            is_queue.task_done()
+            if quit_program:
+                break
+        except Queue.Empty:
+            if quit_program:
+                break
+
+
 if __name__ == "__main__":
+    es_queue = Queue.Queue()
+    is_queue = Queue.Queue()
     es_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_address = ('localhost', 10000)
     es_sock.bind(server_address)
@@ -327,6 +362,10 @@ if __name__ == "__main__":
     t4 = threading.Thread(target=listen_for_es_connections)
     t4.start()
     print 'ES socket listener started'
+    t5 = threading.Thread(target=process_es_queue)
+    t5.start()
+    t6 = threading.Thread(target = process_is_queue())
+    t6.start()
 
     print 'waiting for joins'
     t1.join()
@@ -337,5 +376,7 @@ if __name__ == "__main__":
     print 'IS done'
     t4.join()
     print 'ES done'
+    t5.join()
+    t6.join()
     print('ALL DONE')
 
