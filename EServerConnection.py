@@ -370,9 +370,9 @@ class EServerConnection:
         except:
             pass
 
-    def SendMessage(self, Msg):
+    def SendMessage(self, msg):
         try:
-            self.HAPI.dll.SendMsgES(Msg)
+            self.HAPI.dll.SendMsgES(msg.encode())
         except:
             print('Message submission failed.')
 

@@ -116,6 +116,6 @@ class IServerConnection:
 
     def SendMessage(self, msg):
         try:
-            self.HAPI.dll.SendMsgIS(msg)
+            self.HAPI.dll.SendMsgIS(msg.encode())
         except:
             print('Message submission failed.')
