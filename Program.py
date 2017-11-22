@@ -77,9 +77,6 @@ def interactive_loop():
             si = SessionInfo(addressof(hsi), es_handler, is_handler, es_cleanup, is_cleanup)
             hapi = HAPI_DLL(".\\HAPIKIT.DLL", si)
             hapi.Run()
-            ES.set_print_on(False)
-
-            sleep(2)
 
         if command == 'demo' or command == 'd':
             hsi = HySessionInfo(b"demo", b"demo", b"10.17.240.159", 7620) 
@@ -92,11 +89,13 @@ def interactive_loop():
             si = SessionInfo(addressof(hsi), es_handler, is_handler, es_cleanup, is_cleanup)
             hapi = HAPI_DLL(".\\HAPIKIT.DLL", si)
             hapi.Run()
-            ES.set_print_on(False)
-            sleep(2)
 
-        if command == 'submit':
-            msg = raw_input("enter message:")
+        if command[:6] == 'submit':
+            tokens = command.split(' ')
+            if len(tokens) != 2:
+                return
+            # print tokens[1]
+            msg = tokens[1].strip().encode()
             ES.SendMessage(msg)
 
 
