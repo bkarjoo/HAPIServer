@@ -23,11 +23,13 @@ is_queue = 0
 
 
 def es_message_handler(message):
-    es_queue.put(message)
+    if es_connection:
+        es_connection.sendall(message)
 
 
 def is_message_handler(message):
-    is_queue.put(message)
+    if is_connection:
+        is_connection.sendall(message)
 
 
 def es_cleanup_callback():
@@ -78,6 +80,17 @@ def interactive_loop():
             hapi = HAPI_DLL(".\\HAPIKIT.DLL", si)
             hapi.Run()
 
+        if command == 'r':
+            hsi = HySessionInfo(b"algogroup", b"algogroup", b"10.17.240.155", 8701)
+            es_handler = SessionInfo.fnMsgHdlr_t(es_message_handler)
+            is_handler = SessionInfo.fnMsgHdlr_t(is_message_handler)
+            es_cleanup = SessionInfo.fnCleanUp_t(es_cleanup_callback)
+            is_cleanup = SessionInfo.fnCleanUp_t(is_cleanup_callback)
+
+            si = SessionInfo(addressof(hsi), es_handler, is_handler, es_cleanup, is_cleanup)
+            hapi = HAPI_DLL(".\\HAPIKIT.DLL", si)
+            hapi.dll.PostAdmMsgES(1001, 0, 0)
+
         if command == 'demo' or command == 'd':
             hsi = HySessionInfo(b"demo", b"demo", b"10.17.240.159", 7620) 
 
@@ -102,11 +115,11 @@ def interactive_loop():
 def heartbeat_loop():
     while True:
         if ES.IsConnected():
-            ES.SendHeartBeatMessage()
+            print 'connected, not sending heartbeat'
+            # ES.SendHeartBeatMessage()
         else:
             ts = time.time()
             st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-            global es_msg_count
             print st + ' ES NOT CONNECTED!!! count = ' + str(es_msg_count)
         if quit_program:
             break
