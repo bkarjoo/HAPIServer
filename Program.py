@@ -13,9 +13,10 @@ is_msg_count = 0
 es_read_count = 1
 is_read_count = 1
 es_call_count = 0
-# the socket object for the server
+# connections to the c;oemts
 es_sock = 0
 is_sock = 0
+# connections to the clients
 es_connection = 0
 is_connection = 0
 es_queue = 0
@@ -24,11 +25,14 @@ is_queue = 0
 
 def es_message_handler(message):
     if es_connection:
+        # TODO :
+        #send message to the client
         es_connection.sendall(message)
 
 
 def is_message_handler(message):
     if is_connection:
+        # send message to the client
         is_connection.sendall(message)
 
 
@@ -115,8 +119,8 @@ def interactive_loop():
 def heartbeat_loop():
     while True:
         if ES.IsConnected():
-            print 'connected, not sending heartbeat'
-            # ES.SendHeartBeatMessage()
+            # print 'connected, not sending heartbeat'
+            ES.SendHeartBeatMessage()
         else:
             ts = time.time()
             st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
@@ -225,12 +229,9 @@ def listen_for_es_messages():
             try:
                 header = es_connection.recv(13)
                 if header:
-                    toks = header.split(':')
-                    length = int(toks[3]) - 13
+                    length = int(header[10:13]) - 13
                     remainder = es_connection.recv(length)
                     whole_message = header + remainder
-                    response = 'sending: ' + whole_message
-                    es_connection.sendall(response)
                     if whole_message[14:] == 'QUIT':
                         print 'closing es connection.'
                         es_connection.close()
@@ -259,12 +260,9 @@ def listen_for_is_messages():
             try:
                 header = is_connection.recv(13)
                 if header:
-                    toks = header.split(':')
-                    length = int(toks[3]) - 13
+                    length = int(header[10:13]) - 13
                     remainder = is_connection.recv(length)
                     whole_message = header + remainder
-                    response = 'sending: ' + whole_message
-                    is_connection.sendall(response)
                     if whole_message[14:] == 'QUIT':
                         print 'closing is Connection.'
                         is_connection.close()
