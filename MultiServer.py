@@ -29,7 +29,7 @@ class MultiServer(object):
         # process the incoming queue pass messages to clients with .001 delay
         while 1:
             try:
-                message = self.incoming_queue.get(block=True, timeout=1)
+                message = self.incoming_queue.get()
                 for c in self.connections:
                     try:
                         c.send(message)
@@ -40,6 +40,7 @@ class MultiServer(object):
                 if self.quit_time:
                     break
             except Queue.Empty:
+                time.sleep(.002)
                 if self.quit_time:
                     break
 
