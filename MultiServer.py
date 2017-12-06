@@ -15,12 +15,13 @@ class MultiServer(object):
         self.outgoing_queue = Queue.Queue()
         self.quit_time = False
         self.receiver = 0
+        self.listener_thread = 0
+        self.incoming_thread = 0
+        self.outgoing_thread = 0
+        # self.console_thread = 0
 
     def incoming_message(self, message):
         self.incoming_queue.put(message)
-
-    def get_enqueue_callback(self):
-        return self.incoming_message
 
     def set_receiver(self, receiver):
         self.receiver = receiver
@@ -50,7 +51,9 @@ class MultiServer(object):
             try:
                 message = self.outgoing_queue.get(block=True, timeout=1)
                 if self.receiver:
+                    print message
                     self.receiver(message)
+                    time.sleep(.001)
                 self.outgoing_queue.task_done()
                 if self.quit_time:
                     break
@@ -81,6 +84,8 @@ class MultiServer(object):
         self.sock.settimeout(1)
         while 1:
             try:
+                print 'listening for clients'
+                print self.quit_time
                 if self.quit_time: break
                 conn, addr = self.sock.accept()
                 conn.setblocking(1)
@@ -104,9 +109,6 @@ class MultiServer(object):
         self.close()
         print 'Multiserver is now closed.'
 
-    def quit(self):
-        self.quit_time = True
-        self.close()
 
     def start(self):
         self.sock.bind((self.host, self.port))
@@ -121,9 +123,20 @@ class MultiServer(object):
         #self.console_thread.start()
 
     def close(self):
-        self.incoming_thread.join()
-        self.outgoing_thread.join()
-        self.listener_thread.join()
+        self.quit_time = True
+        time.sleep(1)
+        print 'closing:', self
+        if self.incoming_thread:
+            self.incoming_thread.join()
+            print 'incoming thread joined'
+        if self.outgoing_thread:
+            self.outgoing_thread.join()
+            print 'outgoing thread joined'
+        if self.listener_thread:
+            self.listener_thread.join()
+            print 'listener thread joined'
         for c in self.connections:
-            c.close()
-        self.sock.close()
+            if c:
+                c.close()
+        if self.sock:
+            self.sock.close()
