@@ -6,6 +6,7 @@ import time
 import datetime
 from store import *
 import MultiServer
+from LockLessQueue import LockLessQueue
 
 quit_program = False
 es_msg_count = 0
@@ -33,52 +34,37 @@ esms = 0
 isms = 0
 max_queue_size = 0
 
-def clear_es_messages():
-    global es_messages
-    global es_index
-    es_messages = []
-    es_index = -1
 
 def es_message_handler(message):
-    if len(es_messages) > 100000:
-        if len(es_messages) - es_index == 1:
-            clear_es_messages()
-    es_messages.append(message)
+    es_messages.add_item(message)
 
-def clear_is_messages():
-    global is_messages
-    global is_index
-    is_messages = []
-    is_index = -1
 
 def is_message_handler(message):
-    if len(is_messages) > 10000:
-        clear_is_messages()
-    is_messages.append(message)
+    is_messages.add_item(message)
 
 
 def process_es_list():
     while 1:
-        global es_index
-        global  max_queue_size
-        lag = len(es_messages) - es_index
-        if lag > max_queue_size: max_queue_size = lag
-        if lag > 1:
-            es_index += 1
-            esms.incoming_message(es_messages[es_index])
-        time.sleep(.001)
         if quit_program:
             break
+        try:
+            esms.incoming_message(es_messages.read_item())
+        except LockLessQueue.EmptyList:
+            pass
+        except:
+            raise
+
 
 def process_is_list():
     while 1:
-        global is_index
-        if len(is_messages) - is_index > 1:
-            is_index += 1
-            isms.incoming_message(is_messages[is_index])
-        time.sleep(.001)
         if quit_program:
             break
+        try:
+            isms.incoming_message(is_messages.read_item())
+        except LockLessQueue.EmptyList:
+            pass
+        except:
+            raise
 
 
 def es_cleanup_callback():
@@ -107,10 +93,11 @@ def interactive_loop():
         if command == 'quit' or command == 'q':
             if ES.IsConnected():
                 ES.Exit()
-            if isms:
-                isms.close()
             if esms:
                 esms.close()
+            if isms:
+                isms.close()
+
             global quit_program
             quit_program = True
             break
@@ -165,30 +152,23 @@ def interactive_loop():
             msg = tokens[1].strip().encode()
             ES.SendMessage(msg)
 
-        if command == 'es list':
-            print es_messages
+        if command == 'max es lag':
+            print es_messages.max_lag
 
-        if command == 'is list':
-            print is_messages
-
-        if command == 'es index':
-            print es_index
-
-        if command[:7] == 'es last':
-            tokens = command.split(' ')
-            try:
-                print es_messages[int(tokens[2])]
-            except Exception as e:
-                print e
-
-        if command == 'is index':
-            print is_index
-
-        if command == 'max queue size':
-            print max_queue_size
+        if command == 'max is lag':
+            print is_messages.max_lag
 
         if command == 'es len':
             print len(es_messages)
+
+        if command == 'is len':
+            print len(is_messages)
+
+        if command == 'is lag':
+            print is_messages.lag()
+
+        if command == 'es lag':
+            print es_messages.lag()
 
 
 def heartbeat_loop():
@@ -207,8 +187,9 @@ def heartbeat_loop():
 
 if __name__ == "__main__":
 
-    es_messages = []
-    is_messages = []
+    es_messages = LockLessQueue()
+    is_messages = LockLessQueue()
+
 
     esms = MultiServer.MultiServer('', 10000)
     isms = MultiServer.MultiServer('', 10001)
@@ -237,8 +218,6 @@ if __name__ == "__main__":
     t3.join()
     t4.join()
 
-    esms.quit()
-    isms.quit()
 
     print('ALL DONE')
 

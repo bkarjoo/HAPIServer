@@ -7,6 +7,7 @@ import Queue
 
 class MultiServer(object):
     def __init__(self, host, port):
+        print 'CREATING', id(self)
         self.host = host
         self.port = port
         self.sock = socket.socket()
@@ -29,8 +30,10 @@ class MultiServer(object):
     def process_incoming(self):
         # process the incoming queue pass messages to clients with .001 delay
         while 1:
+            if self.quit_time:
+                print 'Quiting process_incoming', id(self)
             try:
-                message = self.incoming_queue.get()
+                message = self.incoming_queue.get(timeout=1)
                 for c in self.connections:
                     try:
                         c.send(message)
@@ -39,16 +42,19 @@ class MultiServer(object):
                         pass #if client issue don't do nothing with that client
                 self.incoming_queue.task_done()
                 if self.quit_time:
+                    print 'Quiting process_incoming', id(self)
                     break
             except Queue.Empty:
                 time.sleep(.002)
                 if self.quit_time:
+                    print 'Quiting process_incoming', id(self)
                     break
 
     def process_outgoing(self):
         # process ourgoing queues pass messages to hydra with .005 delay
         while 1:
             try:
+
                 message = self.outgoing_queue.get(block=True, timeout=1)
                 if self.receiver:
                     print message
@@ -65,7 +71,9 @@ class MultiServer(object):
         # each client gets one of these
         while True:
             try:
-                if self.quit_time: break
+                #print self.quit_time
+                if self.quit_time:
+                    print 'Quiting client_listener', id(self)
                 conn.settimeout(1)
                 request = conn.recv(1024)  # 1024 stands for bytes of data to be received
                 if len(request) == 0:
@@ -76,6 +84,8 @@ class MultiServer(object):
                     break
                 self.outgoing_queue.put(request)
             except socket.timeout:
+                if self.quit_time:
+                    print 'Quiting client_listener', id(self)
                 pass
             except:
                 break
@@ -84,8 +94,8 @@ class MultiServer(object):
         self.sock.settimeout(1)
         while 1:
             try:
-                print 'listening for clients'
-                print self.quit_time
+                #print 'listening for clients'
+
                 if self.quit_time: break
                 conn, addr = self.sock.accept()
                 conn.setblocking(1)
@@ -94,6 +104,8 @@ class MultiServer(object):
                 thread.start_new_thread(self.client_listener,(
                     conn, ))  # start new thread takes 1st argument as a function name to be run, second is the tuple of arguments to the function.
             except socket.timeout:
+                if self.quit_time:
+                    print 'Quiting listen_for_clients', id(self)
                 pass
             except:
                 raise
@@ -124,19 +136,24 @@ class MultiServer(object):
 
     def close(self):
         self.quit_time = True
+        print self.quit_time
+        print 'ID in MAIN', id(self)
+
+        print 'closing connections:', self
         time.sleep(1)
-        print 'closing:', self
-        if self.incoming_thread:
-            self.incoming_thread.join()
-            print 'incoming thread joined'
-        if self.outgoing_thread:
-            self.outgoing_thread.join()
-            print 'outgoing thread joined'
-        if self.listener_thread:
-            self.listener_thread.join()
-            print 'listener thread joined'
         for c in self.connections:
             if c:
                 c.close()
+
+        print 'waiting for listen_for_clients thread'
+        self.listener_thread.join()
+        print 'waiting for process_outgoing_thread '
+        self.outgoing_thread.join()
+        print 'waiting for process_incoming_thread'
+        self.incoming_thread.join()
+
+        print 'closing socket'
+
+        time.sleep(1)
         if self.sock:
             self.sock.close()
