@@ -33,10 +33,17 @@ is_index = -1
 esms = 0
 isms = 0
 max_queue_size = 0
+started = 0
 
+def set_started():
+    global started
+    started = True
 
 def es_message_handler(message):
-    es_messages.add_item(message)
+    if started:
+        es_messages.add_item(message)
+    else:
+        if message[8] == 'U': set_started()
 
 
 def is_message_handler(message):
@@ -49,7 +56,10 @@ def process_es_list():
             break
         try:
             esms.incoming_message(es_messages.read_item())
+            # print es_messages.read_item()
+            # time.sleep(.001)
         except LockLessQueue.EmptyList:
+
             pass
         except:
             raise
@@ -61,6 +71,8 @@ def process_is_list():
             break
         try:
             isms.incoming_message(is_messages.read_item())
+            # time.sleep(.001)
+            # print is_messages.read_item()
         except LockLessQueue.EmptyList:
             pass
         except:
@@ -76,6 +88,7 @@ def is_cleanup_callback():
 
 
 def es_request(message):
+    # TODO validate message length before sending
     ES.SendMessage(message)
 
 

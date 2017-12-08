@@ -75,6 +75,7 @@ class MultiServer(object):
                 if self.quit_time:
                     print 'Quiting client_listener', id(self)
                 conn.settimeout(1)
+                # TODO take 13 and then the rest, ensures only the message comes in
                 request = conn.recv(1024)  # 1024 stands for bytes of data to be received
                 if len(request) == 0:
                     conn.close()
