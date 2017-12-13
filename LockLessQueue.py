@@ -1,64 +1,97 @@
 from threading import Lock
 
-class Node:
-    def __init__(self,initdata):
-        self.data = initdata
-        self.next = None
-
-    def getData(self):
-        return self.data
-
-    def getNext(self):
-        return self.next
-
-    def setNext(self,newnext):
-        self.next = newnext
-
-class LockLessQueue:
-    def __init__(self):
-        self.head = None
-        self.end = None
-        self.lock = Lock()
-        self.size = 0
-        self.max_lag = 0
-
-    def isEmpty(self):
-        return self.head == None
+class LockLessQueue(object):
+    def __init__(self, list_size):
+        self.list = list()
+        self.size = list_size
+        self.list = [0] * list_size
+        self.write_index = -1
+        self.read_index = -1
 
     def add_item(self, item):
-        # adds to the end
-        with self.lock:
-            temp = Node(item)
-            if self.end:
-                self.end.setNext(temp)
-                self.end = temp
-            else:
-                self.end = temp
-                self.head = temp
-            self.size += 1
-            if self.size > self.max_lag: self.max_lag = self.size
+        self.write_index += 1
+        if self.write_index == self.size: self.write_index = 0
+        self.list[self.write_index] = item
 
     def read_item(self):
-        # remove item
-        with self.lock:
-            if self.head:
-                data = self.head.getData()
-                self.head = self.head.getNext()
-                self.size -= 1
-                if self.size == 0:
-                    self.end = None
-                return data
-            else:
-                raise LockLessQueue.EmptyList('List is empty.')
-
-    def __len__(self):
-        return self.size
+        if self.read_index < self.write_index:
+            self.read_index += 1
+            return self.list[self.read_index]
+        elif self.read_index == self.size - 1:
+            self.read_index = 0
+            return self.list[self.read_index]
+        else:
+            raise LockLessQueue.EmptyList('List empty.')
 
     def lag(self):
-        return self.size
+        return '{} {} {}'.format(self.write_index, self.read_index, self.write_index - self.read_index)
+
+    def __str__(self):
+        return str(self.list)
 
     class EmptyList(Exception):
         pass
+
+
+# class Node:
+#     def __init__(self,initdata):
+#         self.data = initdata
+#         self.next = None
+#
+#     def getData(self):
+#         return self.data
+#
+#     def getNext(self):
+#         return self.next
+#
+#     def setNext(self,newnext):
+#         self.next = newnext
+#
+# class LockLessQueue:
+#     def __init__(self):
+#         self.head = None
+#         self.end = None
+#         self.lock = Lock()
+#         self.size = 0
+#         self.max_lag = 0
+#
+#     def isEmpty(self):
+#         return self.head == None
+#
+#     def add_item(self, item):
+#         # adds to the end
+#         with self.lock:
+#             temp = Node(item)
+#             if self.end:
+#                 self.end.setNext(temp)
+#                 self.end = temp
+#             else:
+#                 self.end = temp
+#                 self.head = temp
+#             self.size += 1
+#             if self.size > self.max_lag: self.max_lag = self.size
+#
+#     def read_item(self):
+#         # remove item
+#         with self.lock:
+#             if self.head:
+#                 data = self.head.getData()
+#                 self.head = self.head.getNext()
+#                 self.size -= 1
+#                 if self.size == 0:
+#                     self.end = None
+#                 return data
+#             else:
+#                 raise LockLessQueue.EmptyList('List is empty.')
+#
+#     def __len__(self):
+#         return self.size
+#
+#     def lag(self):
+#         return self.size
+#
+#     class EmptyList(Exception):
+#         pass
 
 # class LockLessQueue(object):
 #

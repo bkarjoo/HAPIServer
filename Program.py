@@ -35,14 +35,15 @@ isms = 0
 max_queue_size = 0
 started = 0
 
-def set_started():
+def set_started(stat = True):
     global started
-    started = True
+    started = stat
 
 def es_message_handler(message):
     if started:
         es_messages.add_item(message)
     else:
+        es_messages.add_item(message)
         if message[8] == 'U': set_started()
 
 
@@ -165,23 +166,6 @@ def interactive_loop():
             msg = tokens[1].strip().encode()
             ES.SendMessage(msg)
 
-        if command == 'max es lag':
-            print es_messages.max_lag
-
-        if command == 'max is lag':
-            print is_messages.max_lag
-
-        if command == 'es len':
-            print len(es_messages)
-
-        if command == 'is len':
-            print len(is_messages)
-
-        if command == 'is lag':
-            print is_messages.lag()
-
-        if command == 'es lag':
-            print es_messages.lag()
 
 
 def heartbeat_loop():
@@ -193,19 +177,32 @@ def heartbeat_loop():
             ts = time.time()
             st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
             # print st + ' ES NOT CONNECTED!!! count = ' + str(es_msg_count)
+            set_started(False)
+            print es_messages.lag()
         if quit_program:
             break
         sleep(5)
 
 
 if __name__ == "__main__":
+    args = sys.argv[1:]
+    print args
 
-    es_messages = LockLessQueue()
-    is_messages = LockLessQueue()
+    es_port = 10001
+    is_port = 10002
+
+    if len(args) > 0:
+        es_port = int(args[0])
+    if len(args) > 1:
+        is_port = int(args[1])
 
 
-    esms = MultiServer.MultiServer('', 10000)
-    isms = MultiServer.MultiServer('', 10001)
+    es_messages = LockLessQueue(100000)
+    is_messages = LockLessQueue(100000)
+
+
+    esms = MultiServer.MultiServer('', es_port)
+    isms = MultiServer.MultiServer('', is_port)
     esms.set_receiver(es_request)
     isms.set_receiver(is_request)
 

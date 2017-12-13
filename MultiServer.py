@@ -57,8 +57,13 @@ class MultiServer(object):
 
                 message = self.outgoing_queue.get(block=True, timeout=1)
                 if self.receiver:
-                    print message
-                    self.receiver(message)
+
+                    while len(message) > 0:
+                        print message
+                        msg_len = int(message[10:13])
+                        self.receiver(message[:msg_len])
+                        message = message[msg_len:]
+
                     time.sleep(.001)
                 self.outgoing_queue.task_done()
                 if self.quit_time:
@@ -147,11 +152,11 @@ class MultiServer(object):
                 c.close()
 
         print 'waiting for listen_for_clients thread'
-        self.listener_thread.join()
+        if self.listener_thread: self.listener_thread.join()
         print 'waiting for process_outgoing_thread '
-        self.outgoing_thread.join()
+        if self.outgoing_thread: self.outgoing_thread.join()
         print 'waiting for process_incoming_thread'
-        self.incoming_thread.join()
+        if self.incoming_thread: self.incoming_thread.join()
 
         print 'closing socket'
 
